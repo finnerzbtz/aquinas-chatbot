@@ -1,6 +1,6 @@
 (function() {
     // Base URL for loading resources
-    const BASE_URL = 'https://YOUR_GITHUB_USERNAME.github.io/aquinas-chatbot';  // Will update this with your actual GitHub username
+    const BASE_URL = 'https://finnerzbtz.github.io/aquinas-chatbot';  // Updated with actual GitHub username
 
     // Create and inject CSS
     function loadStyles() {
