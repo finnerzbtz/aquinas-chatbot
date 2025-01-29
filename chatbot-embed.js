@@ -1,15 +1,22 @@
 (function() {
+    console.log('Widget script starting...');
+
     // Base URL for assets
     const BASE_URL = "https://finnerz.github.io/aquinas-chatbot";
 
     // Add styles inline
     const styleSheet = document.createElement("style");
     styleSheet.textContent = `
+        /* Debug outline */
+        .widget-container * {
+            outline: 1px solid rgba(255, 0, 0, 0.1);
+        }
+
         .widget-container {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            z-index: 9999;
+            z-index: 999999;
             font-family: Arial, sans-serif;
         }
 
@@ -29,7 +36,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            z-index: 10000;
+            z-index: 999999;
+            padding: 0;
         }
 
         .widget-toggle-button:hover {
@@ -144,6 +152,8 @@
             margin-left: auto;
         }
     `;
+    
+    console.log('Adding styles to document...');
     document.head.appendChild(styleSheet);
 
     // Create widget HTML
@@ -168,12 +178,15 @@
         </div>
     `;
 
-    // Wait for DOM to be fully loaded
     function initializeWidget() {
+        console.log('Initializing widget...');
+        
         // Create container and add widget
         const container = document.createElement("div");
         container.innerHTML = widgetHTML;
         document.body.appendChild(container.firstElementChild);
+        
+        console.log('Widget HTML added to document');
 
         // Add widget functionality
         const toggleButton = document.querySelector('.widget-toggle-button');
@@ -183,7 +196,17 @@
         const sendButton = document.getElementById('send-button');
         const chatMessages = document.getElementById('chat-messages');
 
+        console.log('Elements found:', {
+            toggleButton: !!toggleButton,
+            chatbotWidget: !!chatbotWidget,
+            closeButton: !!closeButton,
+            messageInput: !!messageInput,
+            sendButton: !!sendButton,
+            chatMessages: !!chatMessages
+        });
+
         function toggleWidget() {
+            console.log('Toggle widget clicked');
             chatbotWidget.classList.toggle('active');
             if (chatbotWidget.classList.contains('active')) {
                 messageInput.focus();
@@ -203,7 +226,6 @@
             if (message) {
                 addMessage(message, true);
                 messageInput.value = '';
-                // Add a simple bot response for now
                 setTimeout(() => {
                     addMessage('Thank you for your message. I am a demo version of the chatbot.');
                 }, 1000);
@@ -212,18 +234,13 @@
 
         toggleButton.addEventListener('click', toggleWidget);
         closeButton.addEventListener('click', toggleWidget);
-
-        // Handle send button click
         sendButton.addEventListener('click', handleSendMessage);
-
-        // Handle enter key
         messageInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 handleSendMessage();
             }
         });
 
-        // Close widget when clicking outside
         document.addEventListener('click', (e) => {
             const isClickInside = chatbotWidget.contains(e.target) || toggleButton.contains(e.target);
             if (!isClickInside && chatbotWidget.classList.contains('active')) {
@@ -231,14 +248,18 @@
             }
         });
 
-        // Add welcome message
         addMessage('Hello! How can I help you today?');
+        console.log('Widget initialization complete');
     }
 
+    console.log('Current document readyState:', document.readyState);
+    
     // Initialize when DOM is loaded
     if (document.readyState === 'loading') {
+        console.log('Document still loading, adding DOMContentLoaded listener');
         document.addEventListener('DOMContentLoaded', initializeWidget);
     } else {
+        console.log('Document already loaded, initializing immediately');
         initializeWidget();
     }
 })(); 
