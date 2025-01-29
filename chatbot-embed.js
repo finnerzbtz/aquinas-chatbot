@@ -65,7 +65,7 @@
             transform: translateY(20px);
             opacity: 0;
             pointer-events: none;
-            z-index: 9999;
+            z-index: 999999;
         }
 
         .chatbot-widget.active {
@@ -134,11 +134,18 @@
             background-color: #a01829;
         }
 
+        #chat-input button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
         .message {
             margin-bottom: 10px;
             max-width: 80%;
             padding: 10px;
             border-radius: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
 
         .bot-message {
@@ -150,6 +157,33 @@
             background-color: #CC1F36;
             color: white;
             margin-left: auto;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 10px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #CC1F36;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+            opacity: 0.3;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
         }
     `;
     
@@ -178,6 +212,10 @@
         </div>
     `;
 
+    // Global variables
+    let currentThreadId = null;
+    let isProcessing = false;
+
     function initializeWidget() {
         console.log('Initializing widget...');
         
@@ -205,14 +243,40 @@
             chatMessages: !!chatMessages
         });
 
-        function handleSendMessage() {
+        function showTypingIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator';
+            indicator.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            chatMessages.appendChild(indicator);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return indicator;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = chatMessages.querySelector('.typing-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        async function handleSendMessage() {
             const message = messageInput.value.trim();
-            if (message) {
-                addMessage(message, true);
-                messageInput.value = '';
-                
-                // Call the backend API
-                fetch('https://aquinas-assistant-384571950984.europe-west2.run.app/chat', {
+            if (!message || isProcessing || !currentThreadId) return;
+
+            isProcessing = true;
+            messageInput.value = '';
+            sendButton.disabled = true;
+            messageInput.disabled = true;
+
+            addMessage(message, true);
+            const typingIndicator = showTypingIndicator();
+
+            try {
+                const response = await fetch('https://aquinas-assistant-384571950984.europe-west2.run.app/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -221,24 +285,27 @@
                         message: message,
                         thread_id: currentThreadId
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.response) {
-                        addMessage(data.response);
-                    } else {
-                        throw new Error('No response from bot');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    addMessage('Sorry, I had trouble processing your message. Please try again.');
                 });
+
+                const data = await response.json();
+                removeTypingIndicator();
+
+                if (data.response) {
+                    addMessage(data.response);
+                } else {
+                    throw new Error('No response from bot');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                removeTypingIndicator();
+                addMessage('Sorry, I had trouble processing your message. Please try again.');
+            } finally {
+                isProcessing = false;
+                sendButton.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
             }
         }
-
-        // Initialize chat thread
-        let currentThreadId = null;
 
         async function initializeChat() {
             try {
@@ -297,7 +364,8 @@
         closeButton.addEventListener('click', toggleWidget);
         sendButton.addEventListener('click', handleSendMessage);
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
                 handleSendMessage();
             }
         });
