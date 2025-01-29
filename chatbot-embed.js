@@ -205,9 +205,81 @@
             chatMessages: !!chatMessages
         });
 
+        function handleSendMessage() {
+            const message = messageInput.value.trim();
+            if (message) {
+                addMessage(message, true);
+                messageInput.value = '';
+                
+                // Call the backend API
+                fetch('https://aquinas-assistant-384571950984.europe-west2.run.app/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        thread_id: currentThreadId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.response) {
+                        addMessage(data.response);
+                    } else {
+                        throw new Error('No response from bot');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    addMessage('Sorry, I had trouble processing your message. Please try again.');
+                });
+            }
+        }
+
+        // Initialize chat thread
+        let currentThreadId = null;
+
+        async function initializeChat() {
+            try {
+                const response = await fetch('https://aquinas-assistant-384571950984.europe-west2.run.app/start', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (data.thread_id) {
+                    currentThreadId = data.thread_id;
+                    console.log('Chat initialized with thread ID:', currentThreadId);
+                    addMessage('Hello! How can I help you today?');
+                } else {
+                    throw new Error('No thread ID received');
+                }
+            } catch (error) {
+                console.error('Error initializing chat:', error);
+                addMessage('Sorry, I had trouble connecting. Please refresh the page to try again.');
+            }
+        }
+
+        // Initialize the chat when the widget is first opened
+        let isInitialized = false;
+        
         function toggleWidget() {
             console.log('Toggle widget clicked');
             chatbotWidget.classList.toggle('active');
+            
+            // Initialize chat on first open
+            if (!isInitialized && chatbotWidget.classList.contains('active')) {
+                isInitialized = true;
+                initializeChat();
+            }
+            
             if (chatbotWidget.classList.contains('active')) {
                 messageInput.focus();
             }
@@ -219,17 +291,6 @@
             messageElement.textContent = message;
             chatMessages.appendChild(messageElement);
             chatMessages.scrollTop = chatMessages.scrollHeight;
-        }
-
-        function handleSendMessage() {
-            const message = messageInput.value.trim();
-            if (message) {
-                addMessage(message, true);
-                messageInput.value = '';
-                setTimeout(() => {
-                    addMessage('Thank you for your message. I am a demo version of the chatbot.');
-                }, 1000);
-            }
         }
 
         toggleButton.addEventListener('click', toggleWidget);
@@ -248,7 +309,6 @@
             }
         });
 
-        addMessage('Hello! How can I help you today?');
         console.log('Widget initialization complete');
     }
 
